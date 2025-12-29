@@ -1,6 +1,4 @@
-// ==============================================
-// src/types/index.ts
-// ==============================================
+// types/index.ts
 export enum RequestStatus {
   PENDING = 'PENDING',
   IN_REVIEW = 'IN_REVIEW',
@@ -109,4 +107,101 @@ export interface PaginatedResponse<T> {
   page: number;
   pages: number;
   data: T[];
+}
+
+// ==========================================
+// USER TYPES
+// ==========================================
+
+export interface User {
+  _id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
+  authProvider: 'clerk' | 'google' | 'email';
+  clerkId?: string;
+  googleId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserWithStats extends User {
+  requestCount: number;
+  websiteCount: number;
+}
+
+export interface UserDetailsResponse {
+  user: UserWithStats;
+  recentRequests: WebsiteRequest[];
+  recentWebsites: Website[];
+}
+
+export interface UserStats {
+  total: number;
+  byAuthProvider: {
+    clerk?: number;
+    google?: number;
+    email?: number;
+  };
+  recentUsers: User[];
+}
+
+// ==========================================
+// DTOs (Data Transfer Objects)
+// ==========================================
+
+export interface UpdateUserDTO {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
+}
+
+export interface UpdateRequestStatusDTO {
+  status: RequestStatus;
+  internalNotes?: string;
+}
+
+export interface ApproveRequestDTO {
+  assignedAdmin?: string;
+  initialNotes?: string;
+}
+
+export interface RejectRequestDTO {
+  reason: string;
+}
+
+export interface UpdateWebsiteDTO {
+  name?: string;
+  description?: string;
+  status?: WebsiteStatus;
+  assignedAdmin?: string;
+  domain?: string;
+  deploymentUrl?: string;
+  repositoryUrl?: string;
+  pagesCompleted?: number;
+  totalPages?: number;
+  adminNotes?: string;
+  clientNotes?: string;
+  milestones?: Milestone[];
+}
+
+export interface UpdateWebsiteStatusDTO {
+  status: WebsiteStatus;
+  notes?: string;
+}
+
+export interface AddMilestoneDTO {
+  title: string;
+  completed?: boolean;
+}
+
+export interface UpdateMilestoneDTO {
+  title?: string;
+  completed?: boolean;
+}
+
+export interface AssignAdminDTO {
+  assignedAdmin: string;
 }

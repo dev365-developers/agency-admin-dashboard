@@ -196,14 +196,13 @@ export default function WebsiteDetailsPage({
 
   if (!website) {
     return (
-      <div className="p-4 sm:p-6 pl-16 lg:pl-0">
+      <div className="p-3 sm:p-6 pl-[4.5rem] lg:pl-6">
         <div className="flex flex-col items-center justify-center py-12">
-          <p className="text-white/60 text-sm sm:text-base">Website not found</p>
+          <p className="text-white/60 text-xs sm:text-sm">Website not found</p>
           <Button
             onClick={() => router.push('/websites')}
             variant="outline"
-            className="mt-4 border-white/10"
-            size="sm"
+            className="mt-4 border-white/10 h-8 sm:h-9 text-xs sm:text-sm"
           >
             Back to Websites
           </Button>
@@ -213,7 +212,7 @@ export default function WebsiteDetailsPage({
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pl-16 lg:pl-0">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 pl-[4.5rem] lg:pl-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-start gap-2 sm:gap-4">
@@ -230,10 +229,10 @@ export default function WebsiteDetailsPage({
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white truncate">
                 {website.name}
               </h1>
-              <div className="flex items-center gap-2 px-2 sm:px-3 py-1 bg-white/5 border border-white/10 rounded-md self-start">
-                <span className="text-xs sm:text-sm text-white/60">ID:</span>
-                <span className="text-xs sm:text-sm font-mono text-white truncate max-w-[100px] sm:max-w-none">
-                  {website._id}
+              <div className="flex items-center gap-2 px-2 sm:px-3 py-1 bg-white/5 border border-white/10 rounded-md w-fit">
+                <span className="text-xs text-white/60">ID:</span>
+                <span className="text-xs font-mono text-white truncate max-w-[100px] sm:max-w-none">
+                  {website._id.slice(-8)}
                 </span>
                 <Button
                   size="icon"
@@ -253,14 +252,15 @@ export default function WebsiteDetailsPage({
           <Button
             onClick={handleSaveAll}
             disabled={updateWebsite.isPending || updateStatus.isPending || assignAdmin.isPending}
-            className="bg-white text-black hover:bg-white/90 h-8 sm:h-9 text-xs sm:text-sm flex-1 sm:flex-none"
+            className="bg-white text-black hover:bg-white/90 h-8 sm:h-10 text-xs sm:text-sm"
           >
             {(updateWebsite.isPending || updateStatus.isPending || assignAdmin.isPending) ? (
-              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2 animate-spin" />
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
             ) : (
-              <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+              <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             )}
-            Save All Changes
+            <span className="hidden sm:inline">Save All Changes</span>
+            <span className="sm:hidden">Save</span>
           </Button>
         </div>
       </div>
@@ -268,22 +268,22 @@ export default function WebsiteDetailsPage({
       {/* Project Information & Technical Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card className="bg-white/5 border-white/10 rounded-lg">
-          <CardHeader className="pb-3 sm:pb-6">
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-white text-base sm:text-lg">Project Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
             <div>
               <Label className="text-white/60 text-xs sm:text-sm">User ID</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Input
                   value={website.userId}
                   readOnly
-                  className="bg-black border-white/10 text-white font-mono text-xs sm:text-sm h-8 sm:h-9"
+                  className="bg-black border-white/10 text-white font-mono text-xs sm:text-sm h-9 sm:h-10"
                 />
                 <Button
                   size="icon"
                   variant="outline"
-                  className="border-white/10 hover:bg-white/5 h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+                  className="border-white/10 hover:bg-white/5 h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
                   onClick={() => copyToClipboard(website.userId, 'User ID')}
                 >
                   <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -296,12 +296,12 @@ export default function WebsiteDetailsPage({
                 <Input
                   value={website.requestId}
                   readOnly
-                  className="bg-black border-white/10 text-white font-mono text-xs sm:text-sm h-8 sm:h-9"
+                  className="bg-black border-white/10 text-white font-mono text-xs sm:text-sm h-9 sm:h-10"
                 />
                 <Button
                   size="icon"
                   variant="outline"
-                  className="border-white/10 hover:bg-white/5 h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+                  className="border-white/10 hover:bg-white/5 h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
                   onClick={() => copyToClipboard(website.requestId, 'Request ID')}
                 >
                   <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -313,7 +313,7 @@ export default function WebsiteDetailsPage({
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-black border-white/10 text-white mt-1 h-8 sm:h-9 text-xs sm:text-sm"
+                className="bg-black border-white/10 text-white mt-1 h-9 sm:h-10 text-sm"
               />
             </div>
             <div>
@@ -321,7 +321,7 @@ export default function WebsiteDetailsPage({
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-black border-white/10 text-white mt-1 text-xs sm:text-sm"
+                className="bg-black border-white/10 text-white mt-1 text-sm"
                 rows={3}
               />
             </div>
@@ -348,12 +348,12 @@ export default function WebsiteDetailsPage({
                   value={assignedAdmin}
                   onChange={(e) => setAssignedAdmin(e.target.value)}
                   placeholder="admin@example.com"
-                  className="bg-black border-white/10 text-white h-8 sm:h-9 text-xs sm:text-sm"
+                  className="bg-black border-white/10 text-white h-9 sm:h-10 text-sm"
                 />
                 <Button
                   variant="outline"
                   size="icon"
-                  className="border-white/10 hover:bg-white/5 h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+                  className="border-white/10 hover:bg-white/5 h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
                 >
                   <User className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
@@ -364,10 +364,10 @@ export default function WebsiteDetailsPage({
 
         {/* Technical Details */}
         <Card className="bg-white/5 border-white/10 rounded-lg">
-          <CardHeader className="pb-3 sm:pb-6">
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-white text-base sm:text-lg">Technical Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
             <div>
               <Label className="text-white/60 mb-2 sm:mb-3 block text-xs sm:text-sm">Project Status</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -393,7 +393,7 @@ export default function WebsiteDetailsPage({
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="example.com"
-                className="bg-black border-white/10 text-white mt-1 h-8 sm:h-9 text-xs sm:text-sm"
+                className="bg-black border-white/10 text-white mt-1 h-9 sm:h-10 text-sm"
               />
             </div>
             <div>
@@ -403,14 +403,14 @@ export default function WebsiteDetailsPage({
                   value={deploymentUrl}
                   onChange={(e) => setDeploymentUrl(e.target.value)}
                   placeholder="https://..."
-                  className="bg-black border-white/10 text-white h-8 sm:h-9 text-xs sm:text-sm"
+                  className="bg-black border-white/10 text-white h-9 sm:h-10 text-sm"
                 />
                 {deploymentUrl && (
                   <Button
                     onClick={() => window.open(deploymentUrl, '_blank')}
                     variant="outline"
                     size="icon"
-                    className="border-white/10 h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+                    className="border-white/10 h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
                   >
                     <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
                   </Button>
@@ -424,14 +424,14 @@ export default function WebsiteDetailsPage({
                   value={repositoryUrl}
                   onChange={(e) => setRepositoryUrl(e.target.value)}
                   placeholder="https://github.com/..."
-                  className="bg-black border-white/10 text-white h-8 sm:h-9 text-xs sm:text-sm"
+                  className="bg-black border-white/10 text-white h-9 sm:h-10 text-sm"
                 />
                 {repositoryUrl && (
                   <Button
                     onClick={() => window.open(repositoryUrl, '_blank')}
                     variant="outline"
                     size="icon"
-                    className="border-white/10 h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0"
+                    className="border-white/10 h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
                   >
                     <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
                   </Button>
@@ -463,10 +463,10 @@ export default function WebsiteDetailsPage({
 
       {/* Milestones */}
       <Card className="bg-white/5 border-white/10 rounded-lg">
-        <CardHeader className="pb-3 sm:pb-6">
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="text-white text-base sm:text-lg">Milestones</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
           {website.milestones && website.milestones.length > 0 ? (
             <div className="space-y-2">
               {website.milestones.map((milestone, index) => (
@@ -506,12 +506,12 @@ export default function WebsiteDetailsPage({
               onChange={(e) => setNewMilestone(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddMilestone()}
               placeholder="Add a new milestone..."
-              className="bg-black border-white/10 text-white h-8 sm:h-9 text-xs sm:text-sm"
+              className="bg-black border-white/10 text-white h-9 sm:h-10 text-sm"
             />
             <Button
               onClick={handleAddMilestone}
               disabled={!newMilestone.trim() || addMilestone.isPending}
-              className="bg-white text-black hover:bg-white/90 h-8 sm:h-9 px-3 sm:px-4 flex-shrink-0"
+              className="bg-white text-black hover:bg-white/90 h-9 sm:h-10 px-3 sm:px-4 flex-shrink-0"
             >
               {addMilestone.isPending ? (
                 <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
@@ -526,30 +526,30 @@ export default function WebsiteDetailsPage({
       {/* Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card className="bg-white/5 border-white/10 rounded-lg">
-          <CardHeader className="pb-3 sm:pb-6">
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-white text-base sm:text-lg">Admin Notes</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             <Textarea
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
               placeholder="Internal notes for admins..."
-              className="bg-black border-white/10 text-white text-xs sm:text-sm"
+              className="bg-black border-white/10 text-white text-sm"
               rows={6}
             />
           </CardContent>
         </Card>
 
         <Card className="bg-white/5 border-white/10 rounded-lg">
-          <CardHeader className="pb-3 sm:pb-6">
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-white text-base sm:text-lg">Client Notes</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             <Textarea
               value={clientNotes}
               onChange={(e) => setClientNotes(e.target.value)}
               placeholder="Notes visible to client..."
-              className="bg-black border-white/10 text-white text-xs sm:text-sm"
+              className="bg-black border-white/10 text-white text-sm"
               rows={6}
             />
           </CardContent>

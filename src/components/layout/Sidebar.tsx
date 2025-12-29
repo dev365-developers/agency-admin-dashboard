@@ -7,6 +7,7 @@ import {
   LayoutDashboard, 
   FileText, 
   Globe, 
+  Users,
   LogOut,
   ChevronLeft
 } from 'lucide-react';
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
   { name: 'Requests', href: '/requests', icon: FileText },
   { name: 'Websites', href: '/websites', icon: Globe },
+  { name: 'Users', href: '/users', icon: Users },
 ];
 
 export function Sidebar() {
