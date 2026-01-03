@@ -9,7 +9,7 @@ import {
   Globe, 
   Users,
   LogOut,
-  ChevronLeft
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/AuthStore';
@@ -22,6 +22,7 @@ const navigation = [
   { name: 'Requests', href: '/requests', icon: FileText },
   { name: 'Websites', href: '/websites', icon: Globe },
   { name: 'Users', href: '/users', icon: Users },
+  { name: 'Issues', href: '/issues', icon: MessageSquare },
 ];
 
 export function Sidebar() {

@@ -12,6 +12,11 @@ import {
   Users,
   BarChart3,
   ArrowRight,
+  CreditCard,
+  DollarSign,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,14 +31,17 @@ import {
 import { RequestStatusBadge } from '@/components/requests/RequestStatusBadge';
 import { useRequests, useRequestStats } from '@/hooks/useRequests';
 import { useWebsites, useWebsiteStats } from '@/hooks/useWebsites';
-import { RequestStatus, WebsiteStatus } from '@/types';
+import { useTriggerBillingCheck } from '@/hooks/useBilling';
+import { RequestStatus, WebsiteStatus, BillingStatus } from '@/types';
 import { formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function OverviewPage() {
   const router = useRouter();
   
   const { data: requestStats } = useRequestStats();
   const { data: websiteStats } = useWebsiteStats();
+  const triggerBillingCheck = useTriggerBillingCheck();
   
   // Get recent requests
   const { data: recentRequests } = useRequests({ page: 1, limit: 5 });
@@ -53,15 +61,49 @@ export default function OverviewPage() {
   const completedWebsites = websiteStats?.data?.byStatus?.COMPLETED || 0;
   const deployedWebsites = websiteStats?.data?.byStatus?.DEPLOYED || 0;
 
+  // Billing metrics
+  const activeBilling = websiteStats?.data?.byBillingStatus?.ACTIVE || 0;
+  const pendingBilling = websiteStats?.data?.byBillingStatus?.PENDING || 0;
+  const overdueBilling = websiteStats?.data?.byBillingStatus?.OVERDUE || 0;
+  const suspendedBilling = websiteStats?.data?.byBillingStatus?.SUSPENDED || 0;
+
+  const handleRunBillingCheck = async () => {
+    try {
+      await triggerBillingCheck.mutateAsync();
+      toast.success('Billing check completed!', {
+        description: 'All billing statuses have been updated.',
+      });
+    } catch (error) {
+      toast.error('Failed to run billing check', {
+        description: error instanceof Error ? error.message : 'An error occurred.',
+      });
+    }
+  };
+
   return (
     <div className="h-full overflow-auto pl-16 lg:pl-0">
       {/* Header */}
       <div className="border-b border-white/10 bg-black px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Dashboard Overview</h1>
-          <p className="text-xs sm:text-sm text-white/60 mt-1">
-            Monitor requests, websites, and performance metrics
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">Dashboard Overview</h1>
+            <p className="text-xs sm:text-sm text-white/60 mt-1">
+              Monitor requests, websites, billing, and performance metrics
+            </p>
+          </div>
+          <Button
+            onClick={handleRunBillingCheck}
+            disabled={triggerBillingCheck.isPending}
+            variant="outline"
+            className="border-white/20 hover:bg-white/10"
+          >
+            {triggerBillingCheck.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Run Billing Check
+          </Button>
         </div>
       </div>
 
@@ -110,43 +152,213 @@ export default function OverviewPage() {
             </CardContent>
           </Card>
 
-          {/* Completed */}
+          {/* Active Billing */}
           <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/0 rounded-lg">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-white/60 font-medium truncate">Completed</p>
-                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">{completedWebsites}</p>
+                  <p className="text-xs sm:text-sm text-white/60 font-medium truncate">Active Billing</p>
+                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">{activeBilling}</p>
                   <div className="flex items-center gap-2 mt-1 sm:mt-2">
                     <div className="flex items-center gap-1 text-xs text-white/60">
                       <CheckCircle className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Ready to deploy</span>
+                      <span className="truncate">Paid accounts</span>
                     </div>
                   </div>
                 </div>
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0 ml-3">
-                  <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
+                  <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Deployed */}
+          {/* Billing Issues */}
           <Card className="border-white/10 bg-gradient-to-br from-white/5 to-white/0 rounded-lg">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-white/60 font-medium truncate">Live Websites</p>
-                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">{deployedWebsites}</p>
+                  <p className="text-xs sm:text-sm text-white/60 font-medium truncate">Billing Issues</p>
+                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2">{overdueBilling + suspendedBilling}</p>
                   <div className="flex items-center gap-2 mt-1 sm:mt-2">
                     <div className="flex items-center gap-1 text-xs text-white/60">
-                      <Globe className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Production</span>
+                      <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{suspendedBilling} suspended</span>
                     </div>
                   </div>
                 </div>
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 ml-3">
-                  <Globe className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0 ml-3">
+                  <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Status Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Billing Status Breakdown */}
+          <Card className="border-white/10 bg-white/5 rounded-lg">
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base sm:text-lg truncate flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Billing Status
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/websites?filter=billing')}
+                  className="gap-1 flex-shrink-0 h-8 text-xs sm:text-sm"
+                >
+                  <span className="hidden sm:inline">View All</span>
+                  <span className="sm:hidden">All</span>
+                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="h-4 w-4 sm:h-5 sm:h-5 text-green-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Active</p>
+                      <p className="text-xs text-white/60 truncate">Payments up to date</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0">
+                    {activeBilling}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Pending</p>
+                      <p className="text-xs text-white/60 truncate">In grace period</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0">
+                    {pendingBilling}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Overdue</p>
+                      <p className="text-xs text-white/60 truncate">Payment required</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0 text-orange-400">
+                    {overdueBilling}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                      <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Suspended</p>
+                      <p className="text-xs text-white/60 truncate">Service disabled</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0 text-red-400">
+                    {suspendedBilling}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Website Status Breakdown */}
+          <Card className="border-white/10 bg-white/5 rounded-lg">
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base sm:text-lg truncate">Website Progress</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/websites')}
+                  className="gap-1 flex-shrink-0 h-8 text-xs sm:text-sm"
+                >
+                  <span className="hidden sm:inline">View All</span>
+                  <span className="sm:hidden">All</span>
+                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-gray-500/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Created</p>
+                      <p className="text-xs text-white/60 truncate">Not started</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0">
+                    {websiteStats?.data?.byStatus?.CREATED || 0}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                      <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">In Progress</p>
+                      <p className="text-xs text-white/60 truncate">Active development</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0">
+                    {websiteStats?.data?.byStatus?.IN_PROGRESS || 0}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                      <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Review</p>
+                      <p className="text-xs text-white/60 truncate">Quality check</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0">
+                    {websiteStats?.data?.byStatus?.REVIEW || 0}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                      <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">Deployed</p>
+                      <p className="text-xs text-white/60 truncate">Live production</p>
+                    </div>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold flex-shrink-0">
+                    {websiteStats?.data?.byStatus?.DEPLOYED || 0}
+                  </div>
                 </div>
               </div>
             </CardContent>

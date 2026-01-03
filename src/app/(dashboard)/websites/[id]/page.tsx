@@ -10,13 +10,30 @@ import {
   useAddMilestone,
   useUpdateMilestone,
 } from '@/hooks/useWebsites';
-import { WebsiteStatus } from '@/types';
+import { useUpdateBilling, useRecordPayment } from '@/hooks/useBilling';
+import { WebsiteStatus, BillingStatus } from '@/types';
 import { WebsiteStatusBadge } from '@/components/websites/WebsiteStatusBadge';
+import { BillingStatusBadge } from '@/components/websites/BillingStatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   ArrowLeft,
   Loader2,
@@ -27,6 +44,14 @@ import {
   Plus,
   User,
   Copy,
+  CreditCard,
+  DollarSign,
+  Calendar,
+  Receipt,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  IndianRupee,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -71,6 +96,8 @@ export default function WebsiteDetailsPage({
   const assignAdmin = useAssignAdmin();
   const addMilestone = useAddMilestone();
   const updateMilestone = useUpdateMilestone();
+  const updateBilling = useUpdateBilling();
+  const recordPayment = useRecordPayment();
 
   const website = websiteResponse?.data;
 
@@ -86,6 +113,17 @@ export default function WebsiteDetailsPage({
   const [assignedAdmin, setAssignedAdmin] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<WebsiteStatus>(WebsiteStatus.CREATED);
 
+  // Billing states
+  const [billingPlan, setBillingPlan] = useState('');
+  const [billingPrice, setBillingPrice] = useState('');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  
+  // Payment dialog states
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+
   // Update form when data loads
   useEffect(() => {
     if (website) {
@@ -98,6 +136,11 @@ export default function WebsiteDetailsPage({
       setClientNotes(website.clientNotes || '');
       setAssignedAdmin(website.assignedAdmin || '');
       setSelectedStatus(website.status);
+      
+      // Billing info
+      setBillingPlan(website.billing?.plan || '');
+      setBillingPrice(website.billing?.price?.toString() || '');
+      setBillingCycle(website.billing?.billingCycle || 'monthly');
     }
   }, [website]);
 
@@ -137,11 +180,63 @@ export default function WebsiteDetailsPage({
     }
   };
 
+  const handleUpdateBilling = async () => {
+    try {
+      await updateBilling.mutateAsync({
+        id,
+        plan: billingPlan,
+        price: billingPrice ? parseFloat(billingPrice) : undefined,
+        billingCycle,
+      });
+      toast.success('Billing information updated!');
+    } catch (error) {
+      toast.error('Failed to update billing', {
+        description: error instanceof Error ? error.message : 'An error occurred.',
+      });
+    }
+  };
+
+  const handleRecordPayment = async () => {
+    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+      toast.error('Please enter a valid payment amount');
+      return;
+    }
+
+    try {
+      await recordPayment.mutateAsync({
+        id,
+        amount: parseFloat(paymentAmount),
+        method: paymentMethod || undefined,
+        transactionId: transactionId || undefined,
+      });
+      
+      toast.success('Payment recorded successfully!', {
+        description: 'Billing status has been updated to Active.',
+      });
+      
+      // Reset form
+      setPaymentAmount('');
+      setPaymentMethod('');
+      setTransactionId('');
+      setPaymentDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to record payment', {
+        description: error instanceof Error ? error.message : 'An error occurred.',
+      });
+    }
+  };
+
   const handleStatusChange = async (newStatus: WebsiteStatus) => {
     setSelectedStatus(newStatus);
-    toast.info('Status updated', {
-      description: `Status changed to ${statusConfig[newStatus].label}. Don't forget to save!`,
-    });
+    if (newStatus === WebsiteStatus.DEPLOYED) {
+      toast.info('⚡ Deploying website', {
+        description: 'Billing will be automatically initialized with a 5-day grace period.',
+      });
+    } else {
+      toast.info('Status updated', {
+        description: `Status changed to ${statusConfig[newStatus].label}. Don't forget to save!`,
+      });
+    }
   };
 
   const handleAddMilestone = async () => {
@@ -186,6 +281,14 @@ export default function WebsiteDetailsPage({
     });
   };
 
+  const getDaysRemaining = (dueDate: string) => {
+    const now = new Date();
+    const due = new Date(dueDate);
+    const diff = due.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen pl-16 lg:pl-0">
@@ -210,6 +313,9 @@ export default function WebsiteDetailsPage({
       </div>
     );
   }
+
+  const billing = website.billing;
+  const daysRemaining = billing?.graceEndsAt ? getDaysRemaining(billing.graceEndsAt) : null;
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 pl-[4.5rem] lg:pl-6">
@@ -249,6 +355,7 @@ export default function WebsiteDetailsPage({
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <WebsiteStatusBadge status={website.status} />
+          <BillingStatusBadge status={billing.status} />
           <Button
             onClick={handleSaveAll}
             disabled={updateWebsite.isPending || updateStatus.isPending || assignAdmin.isPending}
@@ -263,6 +370,269 @@ export default function WebsiteDetailsPage({
             <span className="sm:hidden">Save</span>
           </Button>
         </div>
+      </div>
+
+      {/* Billing Alert */}
+      {billing.status === BillingStatus.SUSPENDED && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="h-5 w-5 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <XCircle className="h-3 w-3 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-red-300">Website Suspended</h3>
+              <p className="text-xs text-red-400 mt-1">
+                This website has been suspended due to non-payment. Record a payment to reactivate.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {billing.status === BillingStatus.OVERDUE && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="h-5 w-5 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <AlertTriangle className="h-3 w-3 text-orange-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-orange-300">Payment Overdue</h3>
+              <p className="text-xs text-orange-400 mt-1">
+                Payment is overdue. Please collect payment to avoid service suspension.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {billing.status === BillingStatus.PENDING && daysRemaining !== null && daysRemaining > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="h-5 w-5 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Clock className="h-3 w-3 text-yellow-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-yellow-300">Grace Period Active</h3>
+              <p className="text-xs text-yellow-400 mt-1">
+                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining until payment is due.
+                {billing.graceEndsAt && ` Due: ${format(new Date(billing.graceEndsAt), 'MMM d, yyyy')}`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Billing & Payment Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Billing Information */}
+        <Card className="bg-white/5 border-white/10 rounded-lg">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Billing Information
+              </CardTitle>
+              <BillingStatusBadge status={billing.status} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+            <div>
+              <Label className="text-white/60 text-xs sm:text-sm">Plan</Label>
+              <Input
+                value={billingPlan}
+                onChange={(e) => setBillingPlan(e.target.value)}
+                placeholder="e.g., Premium, Enterprise"
+                className="bg-black border-white/10 text-white mt-1 h-9 sm:h-10 text-sm"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-white/60 text-xs sm:text-sm">Price</Label>
+                <div className="relative mt-1">
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                  <Input
+                    type="number"
+                    value={billingPrice}
+                    onChange={(e) => setBillingPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="bg-black border-white/10 text-white h-9 sm:h-10 text-sm pl-9"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white/60 text-xs sm:text-sm">Cycle</Label>
+                <Select value={billingCycle} onValueChange={(v: any) => setBillingCycle(v)}>
+                  <SelectTrigger className="bg-black border-white/10 text-white mt-1 h-9 sm:h-10 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {billing.activatedAt && (
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
+                <div>
+                  <Label className="text-white/60 text-xs">Activated</Label>
+                  <p className="text-white text-xs sm:text-sm mt-1">
+                    {format(new Date(billing.activatedAt), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                {billing.dueAt && (
+                  <div>
+                    <Label className="text-white/60 text-xs">Due Date</Label>
+                    <p className="text-white text-xs sm:text-sm mt-1">
+                      {format(new Date(billing.dueAt), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {billing.lastPaymentAt && (
+              <div>
+                <Label className="text-white/60 text-xs">Last Payment</Label>
+                <p className="text-white text-xs sm:text-sm mt-1">
+                  {format(new Date(billing.lastPaymentAt), 'MMM d, yyyy')}
+                </p>
+              </div>
+            )}
+
+            <Button
+              onClick={handleUpdateBilling}
+              disabled={updateBilling.isPending}
+              className="w-full bg-white border border-white/20 h-9 text-black"
+            >
+              {updateBilling.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Update Billing Info
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Payment Management */}
+        <Card className="bg-white/5 border-white/10 rounded-lg">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-white text-base sm:text-lg flex items-center gap-2">
+              <Receipt className="w-5 h-5" />
+              Payment Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+            <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full bg-green-500 hover:bg-green-600 h-10">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Record Payment
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-black border-white/10">
+                <DialogHeader>
+                  <DialogTitle>Record Payment</DialogTitle>
+                  <DialogDescription>
+                    Record a payment for this website. This will update the billing status to Active.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label className="text-white/60 text-sm">Amount *</Label>
+                    <div className="relative mt-1">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                      <Input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="bg-white/5 border-white/10 text-white pl-9"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-white/60 text-sm">Payment Method</Label>
+                    <Input
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      placeholder="e.g., Credit Card, Bank Transfer"
+                      className="bg-white/5 border-white/10 text-white mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-white/60 text-sm">Transaction ID</Label>
+                    <Input
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      placeholder="Optional reference number"
+                      className="bg-white/5 border-white/10 text-white mt-1"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleRecordPayment}
+                    disabled={recordPayment.isPending || !paymentAmount}
+                    className="w-full bg-green-500 hover:bg-green-600"
+                  >
+                    {recordPayment.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                    )}
+                    Confirm Payment
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Payment History */}
+            {billing.paymentHistory && billing.paymentHistory.length > 0 && (
+              <div className="border-t border-white/10 pt-4">
+                <Label className="text-white/60 text-xs sm:text-sm mb-2 block">
+                  Payment History
+                </Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {billing.paymentHistory.map((payment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/10"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          ₹{payment.amount.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-white/60">
+                          {format(new Date(payment.date), 'MMM d, yyyy')}
+                          {payment.method && ` • ${payment.method}`}
+                        </p>
+                      </div>
+                      {payment.transactionId && (
+                        <code className="text-xs text-white/60 font-mono">
+                          {payment.transactionId}
+                        </code>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(!billing.paymentHistory || billing.paymentHistory.length === 0) && (
+              <div className="text-center py-6 text-white/40">
+                <Receipt className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                <p className="text-xs">No payments recorded yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Project Information & Technical Details */}

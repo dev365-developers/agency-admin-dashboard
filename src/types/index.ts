@@ -25,6 +25,33 @@ export enum WebsiteStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export enum BillingStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  OVERDUE = 'OVERDUE',
+  SUSPENDED = 'SUSPENDED',
+}
+
+export interface PaymentHistory {
+  amount: number;
+  date: string;
+  method?: string;
+  transactionId?: string;
+}
+
+export interface Billing {
+  status: BillingStatus;
+  plan?: string;
+  price?: number;
+  billingCycle: 'monthly' | 'quarterly' | 'yearly';
+  activatedAt?: string;
+  dueAt?: string;
+  lastPaymentAt?: string;
+  graceEndsAt?: string;
+  suspendedAt?: string;
+  paymentHistory?: PaymentHistory[];
+}
+
 export interface WebsiteRequest {
   _id: string;
   userId: string;
@@ -64,12 +91,17 @@ export interface Website {
   completionPercentage?: number;
   adminNotes?: string;
   clientNotes?: string;
-  milestones?: Milestone[];
-  startedAt?: Date;
-  completedAt?: Date;
-  deployedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  milestones?: Array<{
+    title: string;
+    completed: boolean;
+    completedAt?: string;
+  }>;
+  billing: Billing;
+  startedAt?: string;
+  completedAt?: string;
+  deployedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Milestone {
@@ -81,12 +113,20 @@ export interface Milestone {
 export interface RequestStats {
   total: number;
   byStatus: Record<RequestStatus, number>;
+  byProjectType: Array<{
+    _id: string;
+    count: number;
+  }>;
 }
 
 export interface WebsiteStats {
   total: number;
   byStatus: Record<WebsiteStatus, number>;
-  byAdmin: Array<{ _id: string; count: number }>;
+  byBillingStatus: Record<BillingStatus, number>;
+  byAdmin: Array<{
+    _id: string;
+    count: number;
+  }>;
 }
 
 export interface ApiResponse<T> {
@@ -204,4 +244,74 @@ export interface UpdateMilestoneDTO {
 
 export interface AssignAdminDTO {
   assignedAdmin: string;
+}
+
+
+export enum SupportStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+}
+
+export enum SupportCategory {
+  BUG = 'BUG',
+  CHANGE_REQUEST = 'CHANGE_REQUEST',
+  BILLING = 'BILLING',
+  GENERAL = 'GENERAL',
+}
+
+export enum SupportPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+}
+
+export interface SupportResponse {
+  message: string;
+  isAdminResponse: boolean;
+  respondedAt: string;
+  respondedBy?: string;
+}
+
+export interface SupportRequest {
+  _id: string;
+  userId: string;
+  websiteId: string;
+  category: SupportCategory;
+  subject: string;
+  message: string;
+  status: SupportStatus;
+  priority?: SupportPriority;
+  assignedAdmin?: string;
+  responses?: SupportResponse[];
+  internalNotes?: string;
+  adminNotes?: string;
+  resolutionNotes?: string;
+  resolvedAt?: string;
+  closedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Populated fields
+  website?: {
+    _id: string;
+    name: string;
+    status: WebsiteStatus;
+    deploymentUrl?: string;
+  };
+  user?: {
+    _id: string;
+    email: string;
+    name?: string;
+  };
+}
+
+export interface SupportStatusBadgeProps {
+  status: SupportStatus;
+  className?: string;
+}
+
+export interface SupportCategoryBadgeProps {
+  category: SupportCategory;
+  className?: string;
 }
